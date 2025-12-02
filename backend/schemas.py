@@ -81,3 +81,19 @@ class CommunityPostResponse(CommunityPostBase):
 
     class Config:
         orm_mode = True
+
+class GalleryBase(BaseModel):
+    uploader_name: str
+    file_type: str
+
+class GalleryCreate(GalleryBase):
+    pass
+
+class GalleryResponse(GalleryBase):
+    id: int
+    file_path: str
+    thumbnail_path: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        orm_mode = True

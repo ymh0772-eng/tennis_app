@@ -1,12 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
 
 class AuthService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
-  static String get baseUrl => kReleaseMode
-      ? 'http://your-server-ip:8000'
-      : 'http://localhost:8000'; // Use localhost for all dev (requires adb reverse for Android)
+  static String get baseUrl =>
+      'http://172.30.1.98:8000'; // Use actual IP for physical device testing
 
   Future<Map<String, dynamic>> login(String phone, String pin) async {
     final response = await http.post(

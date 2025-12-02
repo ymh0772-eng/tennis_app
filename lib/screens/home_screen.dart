@@ -3,7 +3,7 @@ import 'login_screen.dart';
 
 import 'league_screen.dart';
 import 'tournament_screen.dart';
-import 'court_map_screen.dart';
+import 'gallery_screen.dart';
 import 'schedule_screen.dart';
 
 import 'community_screen.dart';
@@ -30,9 +30,9 @@ class HomeScreen extends StatelessWidget {
       },
 
       {
-        'title': '코트 현황',
-        'icon': Icons.stadium,
-        'screen': const CourtMapScreen(),
+        'title': '갤러리',
+        'icon': Icons.photo_library,
+        'screen': GalleryScreen(memberName: memberName),
       },
       {
         'title': '운동 약속',
