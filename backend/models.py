@@ -7,13 +7,13 @@ class Member(Base):
     __tablename__ = "members"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    phone = Column(String, unique=True, index=True)
-    birth = Column(String) # YYYY format
+    name = Column(String(50), index=True)
+    phone = Column(String(20), unique=True, index=True)
+    birth = Column(String(10)) # YYYY format
     rank_point = Column(Integer, default=1000)
-    role = Column(String, default="USER") # USER, ADMIN
+    role = Column(String(20), default="USER") # USER, ADMIN
     is_approved = Column(Boolean, default=False)
-    pin = Column(String) # 4-digit PIN
+    pin = Column(String(20)) # 4-digit PIN
     
     # League Stats
     wins = Column(Integer, default=0)
@@ -39,11 +39,11 @@ class ExerciseSchedule(Base):
     __tablename__ = "schedules"
 
     id = Column(Integer, primary_key=True, index=True)
-    member_name = Column(String)
-    start_time = Column(String) # HH:mm
-    end_time = Column(String)   # HH:mm
+    member_name = Column(String(50))
+    start_time = Column(String(10)) # HH:mm
+    end_time = Column(String(10))   # HH:mm
     # [수정 3] 여기에 있던 중복된 start_time, end_time 라인을 삭제했습니다.
-    date = Column(String)       # YYYY-MM-DD
+    date = Column(String(20))       # YYYY-MM-DD
 
 class LeagueHistory(Base):
     __tablename__ = "league_history"
@@ -61,10 +61,10 @@ class CommunityPost(Base):
     __tablename__ = "community_posts"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    author_name = Column(String)
-    content = Column(String)
-    password = Column(String)
+    title = Column(String(100))
+    author_name = Column(String(50))
+    content = Column(String(2000))
+    password = Column(String(20))
     # [수정 2] 시간대 설정 적용
     created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
@@ -72,8 +72,8 @@ class Gallery(Base):
     __tablename__ = "gallery"
 
     id = Column(Integer, primary_key=True, index=True)
-    uploader_name = Column(String)
-    file_type = Column(String) # 'IMAGE' or 'VIDEO'
-    file_path = Column(String)
-    thumbnail_path = Column(String, nullable=True)
+    uploader_name = Column(String(50))
+    file_type = Column(String(20)) # 'IMAGE' or 'VIDEO'
+    file_path = Column(String(255))
+    thumbnail_path = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
