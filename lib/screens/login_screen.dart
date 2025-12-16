@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
-import 'pending_screen.dart';
+import 'approval_waiting_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -65,7 +65,9 @@ class _LoginScreenState extends State<LoginScreen> {
           } else {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const PendingScreen()),
+              MaterialPageRoute(
+                builder: (context) => const ApprovalWaitingScreen(),
+              ),
             );
           }
         }
@@ -77,22 +79,27 @@ class _LoginScreenState extends State<LoginScreen> {
           _pinController.text,
         );
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('회원가입 성공'),
-              content: const Text('관리자 승인을 기다려주세요.'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() => _isLogin = true);
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ApprovalWaitingScreen(),
             ),
           );
+        }
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        if (e.statusCode == 403 || e.message.contains('승인 대기')) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ApprovalWaitingScreen(),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: ${e.message}')));
         }
       }
     } catch (e) {

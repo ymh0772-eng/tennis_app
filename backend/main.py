@@ -82,7 +82,7 @@ def login(login_req: schemas.LoginRequest, db: Session = Depends(get_db)):
         if member.pin != login_req.pin:
             raise HTTPException(status_code=400, detail="비밀번호가 틀렸습니다.")
             
-        if not member.is_approved:
+        if not member.is_approved and member.role != "admin":
             # 403 Forbidden: 승인 대기 중 (앱에서 PendingScreen으로 이동)
             raise HTTPException(status_code=403, detail="승인 대기 중입니다.")
             
@@ -100,14 +100,24 @@ def read_members(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
 
 @app.put("/members/{phone}/approve", response_model=schemas.Member)
 def approve_member(phone: str, db: Session = Depends(get_db)):
+    # 전화번호 정제 (하이픈 제거 등)
     clean_phone = sanitize_phone(phone)
     member = db.query(models.Member).filter(models.Member.phone == clean_phone).first()
     if not member:
         raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
+    
     member.is_approved = True
     db.commit()
     db.refresh(member)
     return member
+
+@app.get("/users/pending", response_model=List[schemas.Member])
+def get_pending_users(db: Session = Depends(get_db)):
+    return db.query(models.Member).filter(models.Member.is_approved == False).all()
+
+@app.put("/users/{phone}/approve", response_model=schemas.Member)
+def approve_user(phone: str, db: Session = Depends(get_db)):
+    return approve_member(phone, db)
 
 # --- 3. 리그 및 경기 API ---
 

@@ -1,10 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+class AuthException implements Exception {
+  final String message;
+  final int statusCode;
+
+  AuthException(this.message, this.statusCode);
+
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
   static String get baseUrl =>
-      'http://172.30.1.98:8000'; // Use actual IP for physical device testing
+      'http://121.178.252.63:8000'; // Use actual IP for physical device testing
 
   Future<Map<String, dynamic>> login(String phone, String pin) async {
     final response = await http.post(
@@ -16,7 +26,11 @@ class AuthService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception(jsonDecode(response.body)['detail'] ?? 'Login failed');
+      final body = jsonDecode(response.body);
+      throw AuthException(
+        body['detail'] ?? 'Login failed',
+        response.statusCode,
+      );
     }
   }
 
@@ -53,12 +67,37 @@ class AuthService {
     }
   }
 
-  Future<void> approveMember(String phone) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/members/$phone/approve'),
-    );
-    if (response.statusCode != 200) {
-      throw Exception('Failed to approve member');
+  Future<List<dynamic>> fetchPendingUsers() async {
+    final response = await http.get(Uri.parse('$baseUrl/users/pending'));
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Failed to load pending users');
+    }
+  }
+
+  // Backend Endpoint: PUT /members/{phone}/approve
+  Future<bool> approveMember(String phone) async {
+    final url = Uri.parse('$baseUrl/members/$phone/approve');
+
+    try {
+      print("📡 승인 요청 발송: $phone -> $url");
+
+      final response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json"},
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ 승인 성공: ${response.body}");
+        return true;
+      } else {
+        print("❌ 승인 실패: ${response.statusCode} / ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("❌ 통신 에러: $e");
+      return false;
     }
   }
 }
