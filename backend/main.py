@@ -106,6 +106,7 @@ def approve_member(phone: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
     member.is_approved = True
     db.commit()
+    print(f"✅ [Server Log] 승인 처리됨: {member.name}, 승인여부: {member.is_approved}")
     db.refresh(member)
     return member
 
