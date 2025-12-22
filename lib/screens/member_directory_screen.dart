@@ -38,14 +38,23 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
     }
   }
 
-  Future<void> _approve(String phone) async {
+  Future<void> _approve(String phone, {int? id}) async {
+    print('DEBUG: 승인 요청하려는 회원 - Phone: $phone, ID: $id');
     try {
-      await _authService.approveMember(phone);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('회원 승인 완료')));
-        _loadMembers(); // Refresh list
+      final error = await _authService.approveMember(phone, id: id);
+      if (error == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('회원 승인 완료')));
+          _loadMembers(); // Refresh list
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error)));
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -118,7 +127,10 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
                                   ),
                                 )
                               : ElevatedButton(
-                                  onPressed: () => _approve(member['phone']),
+                                  onPressed: () => _approve(
+                                    member['phone'],
+                                    id: member['id'],
+                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,
                                     foregroundColor: Colors.white,

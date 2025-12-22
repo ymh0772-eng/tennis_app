@@ -1,10 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/user.dart';
 
 class AuthService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
   static String get baseUrl =>
       'https://mhyunhome.duckdns.org'; // Use actual IP for physical device testing
+
+  static String? accessToken; // Optional: Keep for quick access
+  final _storage = const FlutterSecureStorage();
 
   Future<Map<String, dynamic>> login(String phone, String pin) async {
     final response = await http.post(
@@ -14,7 +19,13 @@ class AuthService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+      if (data['access_token'] != null) {
+        accessToken = data['access_token'];
+        await _storage.write(key: 'access_token', value: accessToken);
+        print("🔑 Token saved to storage: $accessToken");
+      }
+      return data;
     } else {
       throw Exception(jsonDecode(response.body)['detail'] ?? 'Login failed');
     }
@@ -44,21 +55,68 @@ class AuthService {
     }
   }
 
+  Future<List<dynamic>> fetchPendingUsers() async {
+    final response = await http.get(Uri.parse('$baseUrl/users/pending'));
+    if (response.statusCode == 200) {
+      final List<dynamic> rawList = jsonDecode(utf8.decode(response.bodyBytes));
+      // Sanitize data using User model
+      return rawList.map((json) => User.fromJson(json).toJson()).toList();
+    } else {
+      throw Exception('Failed to load pending users');
+    }
+  }
+
   Future<List<dynamic>> fetchMembers() async {
     final response = await http.get(Uri.parse('$baseUrl/members/'));
     if (response.statusCode == 200) {
-      return jsonDecode(utf8.decode(response.bodyBytes));
+      final List<dynamic> rawList = jsonDecode(utf8.decode(response.bodyBytes));
+      // Sanitize data using User model
+      return rawList.map((json) => User.fromJson(json).toJson()).toList();
     } else {
       throw Exception('Failed to load members');
     }
   }
 
-  Future<void> approveMember(String phone) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/members/$phone/approve'),
-    );
-    if (response.statusCode != 200) {
-      throw Exception('Failed to approve member');
+  // Backend Endpoint: PUT /users/{id}/approve (preferred) or /members/{phone}/approve
+  // Returns null if successful, otherwise returns error message
+  Future<String?> approveMember(String phone, {int? id}) async {
+    Uri url;
+    if (id != null) {
+      // Try ID-based endpoint first as suggested by 404 error
+      url = Uri.parse('$baseUrl/users/$id/approve');
+      print("📡 승인 요청 발송 (ID): $id -> $url");
+    } else {
+      url = Uri.parse('$baseUrl/members/$phone/approve');
+      print("📡 승인 요청 발송 (Phone): $phone -> $url");
+    }
+
+    try {
+      // 1. Read token from storage
+      final token = await _storage.read(key: 'access_token');
+
+      if (token == null) {
+        print('❌ 토큰 없음: 로그인이 필요합니다.');
+        return '인증 정보가 없습니다. 다시 로그인해주세요.';
+      }
+
+      final headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      };
+
+      final response = await http.put(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        print("✅ 승인 성공: ${response.body}");
+        return null; // Success
+      } else {
+        final errorMsg = "오류: ${response.statusCode} - ${response.body}";
+        print("❌ 승인 실패: $errorMsg");
+        return errorMsg;
+      }
+    } catch (e) {
+      print("❌ 통신 에러: $e");
+      return "통신 에러: $e";
     }
   }
 }
