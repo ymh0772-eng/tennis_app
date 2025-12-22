@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class AuthService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
   static String get baseUrl =>
-      'http://172.30.1.98:8000'; // Use actual IP for physical device testing
+      'https://mhyunhome.duckdns.org'; // Use actual IP for physical device testing
 
   Future<Map<String, dynamic>> login(String phone, String pin) async {
     final response = await http.post(
