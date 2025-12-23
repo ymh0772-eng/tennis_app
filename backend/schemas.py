@@ -14,6 +14,15 @@ class LoginRequest(BaseModel):
     phone: str
     pin: str
 
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    id: int
+    name: str
+    phone: str
+    role: str
+    is_approved: bool
+
 class Member(MemberBase):
     id: int
     rank_point: int

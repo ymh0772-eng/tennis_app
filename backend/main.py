@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import datetime
 import re  # 정규표현식 모듈 추가 (전화번호 정제용)
+from jose import JWTError, jwt
 
 # 절대 경로 import로 통일 (점 제거)
 import models
@@ -44,6 +45,21 @@ def sanitize_phone(phone: str) -> str:
         return ""
     return re.sub(r'[^0-9]', '', str(phone))
 
+# --- JWT 설정 및 토큰 생성 ---
+SECRET_KEY = "tennis_club_secret_key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
+
+def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
 # --- 2. 회원 관리 API ---
 
 @app.post("/members/", response_model=schemas.Member)
@@ -67,7 +83,7 @@ def create_member(member: schemas.MemberCreate, db: Session = Depends(get_db)):
     db.refresh(db_member)
     return db_member
 
-@app.post("/login", response_model=schemas.Member)
+@app.post("/login", response_model=schemas.LoginResponse)
 def login(login_req: schemas.LoginRequest, db: Session = Depends(get_db)):
     try:
         # 전화번호 정제 (하이픈 제거)
@@ -86,7 +102,21 @@ def login(login_req: schemas.LoginRequest, db: Session = Depends(get_db)):
             # 403 Forbidden: 승인 대기 중 (앱에서 PendingScreen으로 이동)
             raise HTTPException(status_code=403, detail="승인 대기 중입니다.")
             
-        return member
+        # 토큰 생성
+        access_token_expires = datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": member.phone}, expires_delta=access_token_expires
+        )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "id": member.id,
+            "name": member.name,
+            "phone": member.phone,
+            "role": member.role,
+            "is_approved": member.is_approved
+        }
         
     except Exception as e:
         print(f"LOGIN ERROR: {str(e)}")

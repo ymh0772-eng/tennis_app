@@ -1,0 +1,83 @@
+nohup: 입력 무시
+INFO:     Will watch for changes in these directories: ['/home/myong-hwa/projects/tennis_club/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [98890] using StatReload
+/home/myong-hwa/projects/tennis_club/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:383: UserWarning: Valid config keys have changed in V2:
+* 'orm_mode' has been renamed to 'from_attributes'
+  warnings.warn(message, UserWarning)
+INFO:     Started server process [98892]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     202.107.226.4:39872 - "CONNECT www.baidu.com%3A443 HTTP/1.0" 404 Not Found
+INFO:     222.102.118.148:38918 - "GET /gallery HTTP/1.1" 200 OK
+INFO:     222.102.118.148:38944 - "POST /gallery HTTP/1.1" 200 OK
+INFO:     222.102.118.148:38946 - "GET /gallery HTTP/1.1" 200 OK
+INFO:     222.102.118.148:38956 - "GET /images/71528285-52b3-482d-8bf1-9f26a2cc39ba.jpg HTTP/1.1" 200 OK
+INFO:     222.102.118.148:38968 - "GET /schedules HTTP/1.1" 200 OK
+INFO:     222.102.118.148:38974 - "POST /schedules HTTP/1.1" 200 OK
+INFO:     222.102.118.148:38976 - "GET /schedules HTTP/1.1" 200 OK
+INFO:     222.102.118.148:38978 - "GET /community HTTP/1.1" 200 OK
+INFO:     45.194.92.43:52746 - "GET http%3A//httpbin.org/ip HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     198.235.24.122:59998 - "GET / HTTP/1.1" 404 Not Found
+INFO:     216.218.206.66:34974 - "GET / HTTP/1.1" 404 Not Found
+INFO:     216.218.206.66:29623 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     216.218.206.114:12705 - "GET http%3A//api.ipify.org/?format=json HTTP/1.1" 404 Not Found
+INFO:     216.218.206.114:51963 - "CONNECT www.shadowserver.org%3A443 HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     162.142.125.205:17924 - "GET / HTTP/1.1" 404 Not Found
+INFO:     162.142.125.205:13912 - "PRI %2A HTTP/2.0" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     162.142.125.205:35430 - "GET /.well-known/security.txt HTTP/1.1" 404 Not Found
+INFO:     3.149.59.26:58292 - "GET / HTTP/1.1" 404 Not Found
+INFO:     3.149.59.26:49378 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     89.248.164.165:38978 - "GET http%3A//ossweb-img.qq.com/images/js/eas/eas.js HTTP/1.1" 404 Not Found
+INFO:     152.42.165.203:52928 - "GET /.env HTTP/1.1" 404 Not Found
+INFO:     152.42.165.203:52942 - "GET /.git/config HTTP/1.1" 404 Not Found
+INFO:     167.94.146.50:10702 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     167.94.146.50:26116 - "GET / HTTP/1.1" 404 Not Found
+INFO:     167.94.146.50:26124 - "PRI %2A HTTP/2.0" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     167.94.146.50:63726 - "GET /.well-known/security.txt HTTP/1.1" 404 Not Found
+INFO:     185.224.128.16:34642 - "CONNECT www.example.com%3A443 HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     95.214.55.246:36470 - "GET / HTTP/1.1" 404 Not Found
+INFO:     152.32.253.25:58922 - "GET /api/v2/heartbeat HTTP/1.1" 404 Not Found
+INFO:     152.32.253.25:61260 - "GET / HTTP/1.1" 404 Not Found
+INFO:     152.32.253.25:61934 - "GET / HTTP/1.1" 404 Not Found
+INFO:     152.32.253.25:62182 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     185.226.196.25:33825 - "GET / HTTP/1.1" 404 Not Found
+INFO:     185.226.196.22:44399 - "GET / HTTP/1.1" 404 Not Found
+INFO:     185.226.196.23:43929 - "GET /api/session/properties HTTP/1.1" 404 Not Found
+INFO:     185.226.196.23:41003 - "GET /Web/Auth HTTP/1.1" 404 Not Found
+INFO:     185.226.196.23:52255 - "GET /helpdesk/WebObjects/Helpdesk.woa HTTP/1.1" 404 Not Found
+INFO:     185.226.196.25:57325 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     185.226.196.24:47785 - "GET /owncloud/status.php HTTP/1.1" 404 Not Found
+INFO:     185.226.196.23:54621 - "GET /status.php HTTP/1.1" 404 Not Found
+INFO:     185.226.196.22:38107 - "GET /admin/ HTTP/1.1" 404 Not Found
+INFO:     185.226.196.22:48171 - "GET /console HTTP/1.1" 404 Not Found
+INFO:     45.194.92.18:43126 - "GET / HTTP/1.1" 404 Not Found
+INFO:     20.65.201.33:36286 - "GET / HTTP/1.1" 404 Not Found
+INFO:     198.235.24.59:61458 - "GET / HTTP/1.1" 404 Not Found
+INFO:     89.248.164.165:56374 - "GET http%3A//ossweb-img.qq.com/images/js/eas/eas.js HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     134.199.226.36:50642 - "GET / HTTP/1.1" 404 Not Found
+INFO:     134.199.226.36:50646 - "GET /login HTTP/1.1" 405 Method Not Allowed
+INFO:     134.199.170.221:57340 - "GET / HTTP/1.1" 404 Not Found
+INFO:     134.199.170.221:57346 - "POST / HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [98892]
+INFO:     Stopping reloader process [98890]
