@@ -20,26 +20,28 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    // Fail-safe Parsing Logic
     try {
       return User(
-        id: json['id'], // Can be null
-        name: json['name'] ?? '이름 없음',
-        phone: json['phone'] ?? '번호 없음',
+        id: int.tryParse(json['id']?.toString() ?? '0'),
+        name: json['name']?.toString() ?? '이름 없음',
+        phone: json['phone']?.toString() ?? '번호 없음',
         birth: json['birth']?.toString() ?? '',
-        // Handle potentially null or non-integer values for rank/points
-        rank: _parseInt(json['rank']) ?? 0,
-        points: _parseInt(json['points']) ?? 0,
-        status: json['status'] ?? 'pending',
-        isApproved: json['is_approved'] == true,
+        // Safe parsing for numeric fields
+        rank: int.tryParse(json['rank']?.toString() ?? '0') ?? 0,
+        points: int.tryParse(json['points']?.toString() ?? '0') ?? 0,
+        status: json['status']?.toString() ?? 'pending',
+        isApproved:
+            json['is_approved'] == true || json['is_approved'] == 'true',
       );
     } catch (e) {
-      print('❌ Error parsing user data: $e');
+      print('❌ User Parsing Critical Error: $e');
       print('Dump: $json');
-      // Return a safe fallback user object instead of crashing
+      // Absolute fallback to prevent crash
       return User(
         id: null,
-        name: json['name'] ?? 'ErrorUser',
-        phone: json['phone'] ?? 'ErrorPhone',
+        name: 'Parsing Error',
+        phone: '000-0000-0000',
         birth: '',
         rank: 0,
         points: 0,
@@ -47,14 +49,6 @@ class User {
         isApproved: false,
       );
     }
-  }
-
-  // Helper to safely parse integers
-  static int? _parseInt(dynamic value) {
-    if (value == null) return null;
-    if (value is int) return value;
-    if (value is String) return int.tryParse(value);
-    return null;
   }
 
   // Convert back to Map for compatibility with existing code

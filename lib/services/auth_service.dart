@@ -58,9 +58,20 @@ class AuthService {
   Future<List<dynamic>> fetchPendingUsers() async {
     final response = await http.get(Uri.parse('$baseUrl/users/pending'));
     if (response.statusCode == 200) {
+      print('DEBUG: 원본 데이터(Pending): ${utf8.decode(response.bodyBytes)}');
       final List<dynamic> rawList = jsonDecode(utf8.decode(response.bodyBytes));
-      // Sanitize data using User model
-      return rawList.map((json) => User.fromJson(json).toJson()).toList();
+      // Sanitize data using User model with fail-safe map
+      return rawList
+          .map((json) {
+            try {
+              return User.fromJson(json).toJson();
+            } catch (e) {
+              print('⚠️ Parse Error (ID: ${json['id']}): $e');
+              return null;
+            }
+          })
+          .where((item) => item != null)
+          .toList();
     } else {
       throw Exception('Failed to load pending users');
     }
@@ -69,9 +80,20 @@ class AuthService {
   Future<List<dynamic>> fetchMembers() async {
     final response = await http.get(Uri.parse('$baseUrl/members/'));
     if (response.statusCode == 200) {
+      print('DEBUG: 원본 데이터(Members): ${utf8.decode(response.bodyBytes)}');
       final List<dynamic> rawList = jsonDecode(utf8.decode(response.bodyBytes));
-      // Sanitize data using User model
-      return rawList.map((json) => User.fromJson(json).toJson()).toList();
+      // Sanitize data using User model with fail-safe map
+      return rawList
+          .map((json) {
+            try {
+              return User.fromJson(json).toJson();
+            } catch (e) {
+              print('⚠️ Parse Error (ID: ${json['id']}): $e');
+              return null;
+            }
+          })
+          .where((item) => item != null)
+          .toList();
     } else {
       throw Exception('Failed to load members');
     }
@@ -98,6 +120,10 @@ class AuthService {
         print('❌ 토큰 없음: 로그인이 필요합니다.');
         return '인증 정보가 없습니다. 다시 로그인해주세요.';
       }
+
+      print(
+        '🔑 사용 토큰: ${token.substring(0, 10)}...',
+      ); // Log partial token for debugging
 
       final headers = {
         "Content-Type": "application/json",
