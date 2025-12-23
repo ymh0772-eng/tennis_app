@@ -39,15 +39,29 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
   }
 
   Future<void> _approve(String phone, {int? id}) async {
-    print('DEBUG: 승인 요청하려는 회원 - Phone: $phone, ID: $id');
     try {
       final error = await _authService.approveMember(phone, id: id);
       if (error == null) {
         if (mounted) {
+          setState(() {
+            // 리스트에서 해당 회원을 찾아 상태를 'is_approved': true 로 변경
+            final index = _members.indexWhere((m) {
+              if (id != null) {
+                return m['id'] == id;
+              }
+              return m['phone'] == phone;
+            });
+
+            if (index != -1) {
+              // Map을 복사하여 수정 (권장)
+              final updatedMember = Map<String, dynamic>.from(_members[index]);
+              updatedMember['is_approved'] = true;
+              _members[index] = updatedMember;
+            }
+          });
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('회원 승인 완료')));
-          _loadMembers(); // Refresh list
         }
       } else {
         if (mounted) {
@@ -68,9 +82,21 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     // Filter members based on role
-    final displayedMembers = widget.memberRole == 'ADMIN'
-        ? _members
-        : _members.where((m) => m['is_approved'] == true).toList();
+    // Filter members based on role
+    List<dynamic> displayedMembers;
+    if (widget.memberRole == 'ADMIN') {
+      displayedMembers = List.from(_members);
+      displayedMembers.sort((a, b) {
+        final aApproved = a['is_approved'] == true;
+        final bApproved = b['is_approved'] == true;
+        if (aApproved == bApproved) return 0;
+        return aApproved ? 1 : -1; // Pending (false) comes first
+      });
+    } else {
+      displayedMembers = _members
+          .where((m) => m['is_approved'] == true)
+          .toList();
+    }
 
     return Scaffold(
       appBar: AppBar(

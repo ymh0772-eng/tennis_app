@@ -18,16 +18,30 @@ class AuthService {
       body: jsonEncode({'phone': phone, 'pin': pin}),
     );
 
+    // 1. 상세 디버깅 로그 추가
+    print('📦 서버 응답 상태 코드: ${response.statusCode}');
+    print('📦 서버 응답 본문: ${utf8.decode(response.bodyBytes)}');
+
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['access_token'] != null) {
-        accessToken = data['access_token'];
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+      // 2. 토큰 파싱 강화 (Null Safety)
+      final token =
+          data['access_token'] ?? data['accessToken'] ?? data['token'];
+
+      if (token != null) {
+        // 3. 저장소 로직 확인
+        accessToken = token;
         await _storage.write(key: 'access_token', value: accessToken);
-        print("🔑 Token saved to storage: $accessToken");
+        print('✅ 토큰 저장 완료: $accessToken');
+      } else {
+        print('⚠️ 경고: 응답에서 토큰을 찾을 수 없습니다.');
       }
       return data;
     } else {
-      throw Exception(jsonDecode(response.body)['detail'] ?? 'Login failed');
+      throw Exception(
+        jsonDecode(utf8.decode(response.bodyBytes))['detail'] ?? 'Login failed',
+      );
     }
   }
 
