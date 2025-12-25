@@ -91,8 +91,12 @@ class AuthService {
     }
   }
 
-  Future<List<dynamic>> fetchMembers() async {
-    final response = await http.get(Uri.parse('$baseUrl/members/'));
+  Future<List<dynamic>> fetchMembers({bool? isApproved}) async {
+    String url = '$baseUrl/members/';
+    if (isApproved != null) {
+      url += '?is_approved=$isApproved';
+    }
+    final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       print('DEBUG: 원본 데이터(Members): ${utf8.decode(response.bodyBytes)}');
       final List<dynamic> rawList = jsonDecode(utf8.decode(response.bodyBytes));
@@ -115,16 +119,10 @@ class AuthService {
 
   // Backend Endpoint: PUT /users/{id}/approve (preferred) or /members/{phone}/approve
   // Returns null if successful, otherwise returns error message
-  Future<String?> approveMember(String phone, {int? id}) async {
-    Uri url;
-    if (id != null) {
-      // Try ID-based endpoint first as suggested by 404 error
-      url = Uri.parse('$baseUrl/users/$id/approve');
-      print("📡 승인 요청 발송 (ID): $id -> $url");
-    } else {
-      url = Uri.parse('$baseUrl/members/$phone/approve');
-      print("📡 승인 요청 발송 (Phone): $phone -> $url");
-    }
+  Future<String?> approveMember(String phone, {required int id}) async {
+    // Use the ID to build the RESTful URL
+    final url = Uri.parse('$baseUrl/members/$id/approval');
+    print("📡 승인 요청 발송 (ID): $id -> $url");
 
     try {
       // 1. Read token from storage

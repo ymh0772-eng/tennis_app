@@ -32,7 +32,7 @@ class _LeagueScreenState extends State<LeagueScreen> {
   Future<void> _loadData() async {
     try {
       final rankings = await _leagueService.fetchRankings();
-      final members = await _authService.fetchMembers();
+      final members = await _authService.fetchMembers(isApproved: true);
       setState(() {
         _rankings = rankings;
         _members = members;

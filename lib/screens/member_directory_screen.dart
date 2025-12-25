@@ -23,7 +23,11 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
 
   Future<void> _loadMembers() async {
     try {
-      final members = await _authService.fetchMembers();
+      // ADMIN: Fetch all (isApproved: null), Others: Fetch approved only (isApproved: true)
+      final isApproved = widget.memberRole.toUpperCase() == 'ADMIN'
+          ? null
+          : true;
+      final members = await _authService.fetchMembers(isApproved: isApproved);
       setState(() {
         _members = members;
         _isLoading = false;
@@ -38,7 +42,7 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
     }
   }
 
-  Future<void> _approve(String phone, {int? id}) async {
+  Future<void> _approve(String phone, {required int id}) async {
     try {
       final error = await _authService.approveMember(phone, id: id);
       if (error == null) {
@@ -46,10 +50,7 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
           setState(() {
             // 리스트에서 해당 회원을 찾아 상태를 'is_approved': true 로 변경
             final index = _members.indexWhere((m) {
-              if (id != null) {
-                return m['id'] == id;
-              }
-              return m['phone'] == phone;
+              return m['id'] == id;
             });
 
             if (index != -1) {
@@ -83,19 +84,17 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
   Widget build(BuildContext context) {
     // Filter members based on role
     // Filter members based on role
-    List<dynamic> displayedMembers;
-    if (widget.memberRole == 'ADMIN') {
-      displayedMembers = List.from(_members);
+    // List is already filtered by API
+    final displayedMembers = List.from(_members);
+
+    // Sort logic (unchanged or slightly adjusted if needed, currently only for ADMIN mostly)
+    if (widget.memberRole.toUpperCase() == 'ADMIN') {
       displayedMembers.sort((a, b) {
         final aApproved = a['is_approved'] == true;
         final bApproved = b['is_approved'] == true;
         if (aApproved == bApproved) return 0;
         return aApproved ? 1 : -1; // Pending (false) comes first
       });
-    } else {
-      displayedMembers = _members
-          .where((m) => m['is_approved'] == true)
-          .toList();
     }
 
     return Scaffold(
@@ -137,13 +136,22 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
                               fontWeight: FontWeight.normal,
                             ),
                           ),
+                          if (!isApproved)
+                            const TextSpan(
+                              text: ' (승인 대기)',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                         ],
                       ),
                     ),
                     subtitle: Text(
                       '${member['phone']} | 랭킹: ${member['rank_point'] ?? 0}점',
                     ),
-                    trailing: widget.memberRole == 'ADMIN'
+                    trailing: widget.memberRole.toUpperCase() == 'ADMIN'
                         ? (isApproved
                               ? const Text(
                                   '정회원',

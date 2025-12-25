@@ -36,9 +36,9 @@ class _AdminMemberScreenState extends State<AdminMemberScreen> {
     }
   }
 
-  Future<void> _approve(String phone) async {
+  Future<void> _approve(String phone, {required int id}) async {
     try {
-      await _authService.approveMember(phone);
+      await _authService.approveMember(phone, id: id);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -104,7 +104,8 @@ class _AdminMemberScreenState extends State<AdminMemberScreen> {
                             ),
                           )
                         : ElevatedButton(
-                            onPressed: () => _approve(member['phone']),
+                            onPressed: () =>
+                                _approve(member['phone'], id: member['id']),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
                               foregroundColor: Colors.white,
