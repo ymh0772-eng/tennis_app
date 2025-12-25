@@ -124,8 +124,11 @@ def login(login_req: schemas.LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"로그인 처리 중 오류: {str(e)}")
 
 @app.get("/members/", response_model=List[schemas.Member])
-def read_members(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    members = db.query(models.Member).offset(skip).limit(limit).all()
+def read_members(skip: int = 0, limit: int = 100, is_approved: Optional[bool] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Member)
+    if is_approved is not None:
+        query = query.filter(models.Member.is_approved == is_approved)
+    members = query.offset(skip).limit(limit).all()
     return members
 
 @app.put("/members/{phone}/approve", response_model=schemas.Member)
@@ -139,6 +142,17 @@ def approve_member(phone: str, db: Session = Depends(get_db)):
     print(f"✅ [Server Log] 승인 처리됨: {member.name}, 승인여부: {member.is_approved}")
     db.refresh(member)
     return member
+
+@app.put("/members/{member_id}/approval")
+def approve_member_by_id(member_id: int, db: Session = Depends(get_db)):
+    member = db.query(models.Member).filter(models.Member.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    member.is_approved = True
+    db.commit()
+    print(f"✅ [Server Log] ID 승인 처리됨: {member.name} (ID: {member.id})")
+    return {"message": "Member approved successfully"}
 
 # --- 3. 리그 및 경기 API ---
 
@@ -186,7 +200,8 @@ def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
 @app.get("/league/rankings", response_model=List[schemas.Member])
 def get_rankings(db: Session = Depends(get_db)):
     # 순위 산정: 승점 > 득실차 > 승수 내림차순
-    rankings = db.query(models.Member).order_by(
+    # 승인된 회원만 랭킹에 표시
+    rankings = db.query(models.Member).filter(models.Member.is_approved == True).order_by(
         models.Member.rank_point.desc(),
         models.Member.game_diff.desc(),
         models.Member.wins.desc()
