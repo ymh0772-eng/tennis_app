@@ -37,10 +37,12 @@ class Member(MemberBase):
         orm_mode = True
 
 class MatchBase(BaseModel):
-    player1_id: int
-    player2_id: int
-    score1: int
-    score2: int
+    team_a_player1_id: int
+    team_a_player2_id: int
+    team_b_player1_id: int
+    team_b_player2_id: int
+    score_team_a: int
+    score_team_b: int
 
 class MatchCreate(MatchBase):
     pass

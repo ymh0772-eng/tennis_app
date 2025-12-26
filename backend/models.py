@@ -25,15 +25,25 @@ class Match(Base):
     __tablename__ = "matches"
 
     id = Column(Integer, primary_key=True, index=True)
-    player1_id = Column(Integer, ForeignKey("members.id"))
-    player2_id = Column(Integer, ForeignKey("members.id"))
-    score1 = Column(Integer)
-    score2 = Column(Integer)
+    
+    # Team A
+    team_a_player1_id = Column(Integer, ForeignKey("members.id"))
+    team_a_player2_id = Column(Integer, ForeignKey("members.id"))
+    
+    # Team B
+    team_b_player1_id = Column(Integer, ForeignKey("members.id"))
+    team_b_player2_id = Column(Integer, ForeignKey("members.id"))
+    
+    score_team_a = Column(Integer)
+    score_team_b = Column(Integer)
+    
     # [수정 2] 최신 파이썬 표준에 맞게 시간대(Timezone) 설정
     date = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
-    player1 = relationship("Member", foreign_keys=[player1_id])
-    player2 = relationship("Member", foreign_keys=[player2_id])
+    team_a_player1 = relationship("Member", foreign_keys=[team_a_player1_id])
+    team_a_player2 = relationship("Member", foreign_keys=[team_a_player2_id])
+    team_b_player1 = relationship("Member", foreign_keys=[team_b_player1_id])
+    team_b_player2 = relationship("Member", foreign_keys=[team_b_player2_id])
 
 class ExerciseSchedule(Base):
     __tablename__ = "schedules"
