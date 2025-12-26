@@ -15,19 +15,23 @@ class LeagueService {
   }
 
   Future<void> submitMatch(
-    int player1Id,
-    int player2Id,
-    int score1,
-    int score2,
+    int teamAPlayer1Id,
+    int teamAPlayer2Id,
+    int teamBPlayer1Id,
+    int teamBPlayer2Id,
+    int scoreTeamA,
+    int scoreTeamB,
   ) async {
     final response = await http.post(
       Uri.parse('$baseUrl/matches'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'player1_id': player1Id,
-        'player2_id': player2Id,
-        'score1': score1,
-        'score2': score2,
+        'team_a_player1_id': teamAPlayer1Id,
+        'team_a_player2_id': teamAPlayer2Id,
+        'team_b_player1_id': teamBPlayer1Id,
+        'team_b_player2_id': teamBPlayer2Id,
+        'score_team_a': scoreTeamA,
+        'score_team_b': scoreTeamB,
       }),
     );
 

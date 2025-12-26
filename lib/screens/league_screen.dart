@@ -17,11 +17,14 @@ class _LeagueScreenState extends State<LeagueScreen> {
   List<dynamic> _members = [];
   bool _isLoading = true;
 
-  // Match Input State
-  int? _selectedPlayer1;
-  int? _selectedPlayer2;
-  final _score1Controller = TextEditingController();
-  final _score2Controller = TextEditingController();
+  // Match Input State: 2vs2
+  int? _teamAP1;
+  int? _teamAP2;
+  int? _teamBP1;
+  int? _teamBP2;
+
+  final _scoreAController = TextEditingController();
+  final _scoreBController = TextEditingController();
 
   @override
   void initState() {
@@ -48,19 +51,28 @@ class _LeagueScreenState extends State<LeagueScreen> {
   }
 
   Future<void> _submitMatch() async {
-    if (_selectedPlayer1 == null || _selectedPlayer2 == null) {
+    // 1. Check all players selected
+    if (_teamAP1 == null ||
+        _teamAP2 == null ||
+        _teamBP1 == null ||
+        _teamBP2 == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('선수를 선택해주세요')));
+      ).showSnackBar(const SnackBar(content: Text('모든 선수를 선택해주세요 (4명)')));
       return;
     }
-    if (_selectedPlayer1 == _selectedPlayer2) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('동일한 선수를 선택할 수 없습니다')));
+
+    // 2. Check duplicates
+    final selectedIds = {_teamAP1, _teamAP2, _teamBP1, _teamBP2};
+    if (selectedIds.length != 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('중복된 선수가 있습니다. 모두 다른 선수여야 합니다.')),
+      );
       return;
     }
-    if (_score1Controller.text.isEmpty || _score2Controller.text.isEmpty) {
+
+    // 3. Check scores
+    if (_scoreAController.text.isEmpty || _scoreBController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('점수를 입력해주세요')));
@@ -69,20 +81,24 @@ class _LeagueScreenState extends State<LeagueScreen> {
 
     try {
       await _leagueService.submitMatch(
-        _selectedPlayer1!,
-        _selectedPlayer2!,
-        int.parse(_score1Controller.text),
-        int.parse(_score2Controller.text),
+        _teamAP1!,
+        _teamAP2!,
+        _teamBP1!,
+        _teamBP2!,
+        int.parse(_scoreAController.text),
+        int.parse(_scoreBController.text),
       );
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('경기 결과 등록 완료')));
-        _score1Controller.clear();
-        _score2Controller.clear();
+        ).showSnackBar(const SnackBar(content: Text('복식 경기 결과 등록 완료')));
+        _scoreAController.clear();
+        _scoreBController.clear();
         setState(() {
-          _selectedPlayer1 = null;
-          _selectedPlayer2 = null;
+          _teamAP1 = null;
+          _teamAP2 = null;
+          _teamBP1 = null;
+          _teamBP2 = null;
         });
         _loadData(); // Refresh rankings
       }
@@ -95,11 +111,37 @@ class _LeagueScreenState extends State<LeagueScreen> {
     }
   }
 
+  Widget _buildPlayerDropdown(
+    String label,
+    int? value,
+    ValueChanged<int?> onChanged,
+  ) {
+    return DropdownButtonFormField<int>(
+      isExpanded: true,
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+      ),
+      items: _members.map<DropdownMenuItem<int>>((m) {
+        return DropdownMenuItem<int>(
+          value: m['id'],
+          child: Text(m['name'], overflow: TextOverflow.ellipsis),
+        );
+      }).toList(),
+      onChanged: onChanged,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('월례 풀리그'),
+        title: const Text('월례 풀리그 (복식)'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
@@ -109,7 +151,7 @@ class _LeagueScreenState extends State<LeagueScreen> {
               children: [
                 // Top: Ranking Board
                 Expanded(
-                  flex: 1,
+                  flex: 4,
                   child: SingleChildScrollView(
                     scrollDirection: Axis.vertical,
                     child: SingleChildScrollView(
@@ -145,7 +187,7 @@ class _LeagueScreenState extends State<LeagueScreen> {
                 const Divider(thickness: 2),
                 // Bottom: Match Input
                 Expanded(
-                  flex: 1,
+                  flex: 6,
                   child: SingleChildScrollView(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -153,105 +195,134 @@ class _LeagueScreenState extends State<LeagueScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            '경기 결과 입력',
+                            '경기 결과 입력 (2 vs 2)',
                             style: Theme.of(context).textTheme.titleLarge,
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<int>(
-                                  isExpanded: true,
-                                  value: _selectedPlayer1,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Player A',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 12,
+
+                          // Team A Card
+                          Card(
+                            elevation: 2,
+                            color: Colors.blue.shade50,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                children: [
+                                  const Text(
+                                    "Team A",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.blue,
                                     ),
                                   ),
-                                  items: _members.map<DropdownMenuItem<int>>((
-                                    m,
-                                  ) {
-                                    return DropdownMenuItem<int>(
-                                      value: m['id'],
-                                      child: Text(
-                                        m['name'],
-                                        overflow: TextOverflow.ellipsis,
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildPlayerDropdown(
+                                          "선수 1",
+                                          _teamAP1,
+                                          (val) =>
+                                              setState(() => _teamAP1 = val),
+                                        ),
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) =>
-                                      setState(() => _selectedPlayer1 = val),
-                                ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _buildPlayerDropdown(
+                                          "선수 2",
+                                          _teamAP2,
+                                          (val) =>
+                                              setState(() => _teamAP2 = val),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _scoreAController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Team A 점수',
+                                      border: OutlineInputBorder(),
+                                      fillColor: Colors.white,
+                                      filled: true,
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: DropdownButtonFormField<int>(
-                                  isExpanded: true,
-                                  value: _selectedPlayer2,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Player B',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // VS Divider
+                          const Center(
+                            child: Text(
+                              "VS",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Team B Card
+                          Card(
+                            elevation: 2,
+                            color: Colors.red.shade50,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                children: [
+                                  const Text(
+                                    "Team B",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.red,
                                     ),
                                   ),
-                                  items: _members.map<DropdownMenuItem<int>>((
-                                    m,
-                                  ) {
-                                    return DropdownMenuItem<int>(
-                                      value: m['id'],
-                                      child: Text(
-                                        m['name'],
-                                        overflow: TextOverflow.ellipsis,
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildPlayerDropdown(
+                                          "선수 1",
+                                          _teamBP1,
+                                          (val) =>
+                                              setState(() => _teamBP1 = val),
+                                        ),
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) =>
-                                      setState(() => _selectedPlayer2 = val),
-                                ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _buildPlayerDropdown(
+                                          "선수 2",
+                                          _teamBP2,
+                                          (val) =>
+                                              setState(() => _teamBP2 = val),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _scoreBController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Team B 점수',
+                                      border: OutlineInputBorder(),
+                                      fillColor: Colors.white,
+                                      filled: true,
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _score1Controller,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Score A',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  ':',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: TextField(
-                                  controller: _score2Controller,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Score B',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                            ],
-                          ),
+
                           const SizedBox(height: 24),
                           FilledButton(
                             onPressed: _submitMatch,
@@ -263,7 +334,7 @@ class _LeagueScreenState extends State<LeagueScreen> {
                               style: TextStyle(fontSize: 18),
                             ),
                           ),
-                          const SizedBox(height: 32), // Extra padding at bottom
+                          const SizedBox(height: 32),
                         ],
                       ),
                     ),
