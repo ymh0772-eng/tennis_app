@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import datetime
@@ -24,7 +25,7 @@ app.mount("/images", StaticFiles(directory="uploads"), name="images")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 모든 주소에서 접속 허용
+    allow_origin_regex=".*",  # allow_origins=["*"] 대신 regex 사용 (credentials=True일 때 필수)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,7 +59,30 @@ def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] 
         expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+# --- OAuth2 Scheme ---
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        phone: str = payload.get("sub")
+        if phone is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = db.query(models.Member).filter(models.Member.phone == phone).first()
+    if user is None:
+        raise credentials_exception
+    return user
 
 # --- 2. 회원 관리 API ---
 
@@ -154,6 +178,28 @@ def approve_member_by_id(member_id: int, db: Session = Depends(get_db)):
     print(f"✅ [Server Log] ID 승인 처리됨: {member.name} (ID: {member.id})")
     return {"message": "Member approved successfully"}
 
+@app.delete("/members/{member_id}")
+def delete_member(
+    member_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: models.Member = Depends(get_current_user)
+):
+    # 권한 체크: ADMIN만 삭제 가능
+    if current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="권한이 없습니다. (ADMIN only)"
+        )
+    
+    member = db.query(models.Member).filter(models.Member.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+        
+    db.delete(member)
+    db.commit()
+    print(f"✅ [Server Log] 회원 삭제됨: {member.name} (ID: {member.id})")
+    return {"message": "Member deleted successfully"}
+
 # --- 3. 리그 및 경기 API ---
 
 @app.post("/matches", response_model=schemas.Match)
@@ -226,6 +272,112 @@ def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_match)
     return db_match
+
+@app.delete("/matches/{match_id}")
+def delete_match(
+    match_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: models.Member = Depends(get_current_user)
+):
+    # 권한 체크: ADMIN만 삭제 가능
+    if current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="권한이 없습니다. (ADMIN only)"
+        )
+    
+    match = db.query(models.Match).filter(models.Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+    
+    # --- 스탯 롤백 (Rollback Stats) ---
+    ta_p1 = db.query(models.Member).filter(models.Member.id == match.team_a_player1_id).first()
+    ta_p2 = db.query(models.Member).filter(models.Member.id == match.team_a_player2_id).first()
+    tb_p1 = db.query(models.Member).filter(models.Member.id == match.team_b_player1_id).first()
+    tb_p2 = db.query(models.Member).filter(models.Member.id == match.team_b_player2_id).first()
+
+    # Note: If a player was deleted, we skip their update (or handle gracefully)
+    # But current logic deletes match before player, so valid IDs should exist unless forced otherwise.
+    
+    # 득실차 복구
+    diff = match.score_team_a - match.score_team_b
+    
+    if ta_p1: ta_p1.game_diff -= diff
+    if ta_p2: ta_p2.game_diff -= diff
+    
+    if tb_p1: tb_p1.game_diff += diff
+    if tb_p2: tb_p2.game_diff += diff
+    
+    # 승패/승점 복구
+    if match.score_team_a > match.score_team_b:
+        # Team A Won (Revert: -3 pts, -1 win for A / -1 loss for B)
+        if ta_p1:
+            ta_p1.rank_point -= 3
+            ta_p1.wins -= 1
+        if ta_p2:
+            ta_p2.rank_point -= 3
+            ta_p2.wins -= 1
+            
+        if tb_p1: tb_p1.losses -= 1
+        if tb_p2: tb_p2.losses -= 1
+            
+    elif match.score_team_a < match.score_team_b:
+        # Team B Won (Revert: -3 pts, -1 win for B / -1 loss for A)
+        if tb_p1:
+            tb_p1.rank_point -= 3
+            tb_p1.wins -= 1
+        if tb_p2:
+            tb_p2.rank_point -= 3
+            tb_p2.wins -= 1
+            
+        if ta_p1: ta_p1.losses -= 1
+        if ta_p2: ta_p2.losses -= 1
+            
+    else:
+        # Draw (Revert: -1 pts, -1 draw for All)
+        if ta_p1:
+            ta_p1.rank_point -= 1
+            ta_p1.draws -= 1
+        if ta_p2:
+            ta_p2.rank_point -= 1
+            ta_p2.draws -= 1
+            
+        if tb_p1:
+            tb_p1.rank_point -= 1
+            tb_p1.draws -= 1
+        if tb_p2:
+            tb_p2.rank_point -= 1
+            tb_p2.draws -= 1
+
+    # 경기 삭제
+    db.delete(match)
+    db.commit()
+    print(f"✅ [Server Log] 경기 삭제 및 스탯 롤백 완료 (Match ID: {match_id})")
+    
+    return {"message": "Match deleted and stats rolled back successfully"}
+
+@app.get("/matches", response_model=List[schemas.MatchHistoryResponse])
+def read_matches(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    matches = db.query(models.Match).order_by(models.Match.id.desc()).offset(skip).limit(limit).all()
+    
+    result = []
+    for m in matches:
+        # Resolve names. If player is deleted/null, handle gracefully.
+        ta_p1 = m.team_a_player1.name if m.team_a_player1 else "Unknown"
+        ta_p2 = m.team_a_player2.name if m.team_a_player2 else "Unknown"
+        tb_p1 = m.team_b_player1.name if m.team_b_player1 else "Unknown"
+        tb_p2 = m.team_b_player2.name if m.team_b_player2 else "Unknown"
+        
+        result.append(schemas.MatchHistoryResponse(
+            id=m.id,
+            date=m.date,
+            score_team_a=m.score_team_a,
+            score_team_b=m.score_team_b,
+            team_a_names=f"{ta_p1}, {ta_p2}",
+            team_b_names=f"{tb_p1}, {tb_p2}"
+        ))
+        
+    return result
 
 @app.get("/league/rankings", response_model=List[schemas.Member])
 def get_rankings(db: Session = Depends(get_db)):

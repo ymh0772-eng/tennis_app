@@ -54,6 +54,17 @@ class Match(MatchBase):
     class Config:
         orm_mode = True
 
+class MatchHistoryResponse(BaseModel):
+    id: int
+    date: datetime
+    score_team_a: int
+    score_team_b: int
+    team_a_names: str
+    team_b_names: str
+    
+    class Config:
+        orm_mode = True
+
 class ScheduleBase(BaseModel):
     member_name: str
     start_time: str
