@@ -124,8 +124,11 @@ def login(login_req: schemas.LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"로그인 처리 중 오류: {str(e)}")
 
 @app.get("/members/", response_model=List[schemas.Member])
-def read_members(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    members = db.query(models.Member).offset(skip).limit(limit).all()
+def read_members(skip: int = 0, limit: int = 100, is_approved: Optional[bool] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Member)
+    if is_approved is not None:
+        query = query.filter(models.Member.is_approved == is_approved)
+    members = query.offset(skip).limit(limit).all()
     return members
 
 @app.put("/members/{phone}/approve", response_model=schemas.Member)
@@ -140,44 +143,85 @@ def approve_member(phone: str, db: Session = Depends(get_db)):
     db.refresh(member)
     return member
 
+@app.put("/members/{member_id}/approval")
+def approve_member_by_id(member_id: int, db: Session = Depends(get_db)):
+    member = db.query(models.Member).filter(models.Member.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    member.is_approved = True
+    db.commit()
+    print(f"✅ [Server Log] ID 승인 처리됨: {member.name} (ID: {member.id})")
+    return {"message": "Member approved successfully"}
+
 # --- 3. 리그 및 경기 API ---
 
 @app.post("/matches", response_model=schemas.Match)
 def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
     # 1. 경기 기록 생성
     db_match = models.Match(
-        player1_id=match.player1_id,
-        player2_id=match.player2_id,
-        score1=match.score1,
-        score2=match.score2
+        team_a_player1_id=match.team_a_player1_id,
+        team_a_player2_id=match.team_a_player2_id,
+        team_b_player1_id=match.team_b_player1_id,
+        team_b_player2_id=match.team_b_player2_id,
+        score_team_a=match.score_team_a,
+        score_team_b=match.score_team_b
     )
     db.add(db_match)
 
     # 2. 선수 스탯 업데이트
-    p1 = db.query(models.Member).filter(models.Member.id == match.player1_id).first()
-    p2 = db.query(models.Member).filter(models.Member.id == match.player2_id).first()
+    # Team A members
+    ta_p1 = db.query(models.Member).filter(models.Member.id == match.team_a_player1_id).first()
+    ta_p2 = db.query(models.Member).filter(models.Member.id == match.team_a_player2_id).first()
+    
+    # Team B members
+    tb_p1 = db.query(models.Member).filter(models.Member.id == match.team_b_player1_id).first()
+    tb_p2 = db.query(models.Member).filter(models.Member.id == match.team_b_player2_id).first()
 
-    if not p1 or not p2:
-        raise HTTPException(status_code=404, detail="선수 정보를 찾을 수 없습니다.")
+    if not ta_p1 or not ta_p2 or not tb_p1 or not tb_p2:
+        raise HTTPException(status_code=404, detail="참가 선수를 찾을 수 없습니다.")
 
     # 득실차 계산
-    p1.game_diff += (match.score1 - match.score2)
-    p2.game_diff += (match.score2 - match.score1)
+    diff = match.score_team_a - match.score_team_b
+    
+    ta_p1.game_diff += diff
+    ta_p2.game_diff += diff
+    
+    tb_p1.game_diff -= diff
+    tb_p2.game_diff -= diff
 
     # 승점 및 승무패 기록 (승3, 무1, 패0)
-    if match.score1 > match.score2:
-        p1.rank_point += 3
-        p1.wins += 1
-        p2.losses += 1
-    elif match.score1 < match.score2:
-        p2.rank_point += 3
-        p2.wins += 1
-        p1.losses += 1
+    if match.score_team_a > match.score_team_b:
+        # Team A Win
+        ta_p1.rank_point += 3
+        ta_p2.rank_point += 3
+        ta_p1.wins += 1
+        ta_p2.wins += 1
+        
+        tb_p1.losses += 1
+        tb_p2.losses += 1
+        
+    elif match.score_team_a < match.score_team_b:
+        # Team B Win
+        tb_p1.rank_point += 3
+        tb_p2.rank_point += 3
+        tb_p1.wins += 1
+        tb_p2.wins += 1
+        
+        ta_p1.losses += 1
+        ta_p2.losses += 1
+        
     else:
-        p1.rank_point += 1
-        p2.rank_point += 1
-        p1.draws += 1
-        p2.draws += 1
+        # Draw
+        ta_p1.rank_point += 1
+        ta_p2.rank_point += 1
+        tb_p1.rank_point += 1
+        tb_p2.rank_point += 1
+        
+        ta_p1.draws += 1
+        ta_p2.draws += 1
+        tb_p1.draws += 1
+        tb_p2.draws += 1
 
     db.commit()
     db.refresh(db_match)
@@ -186,7 +230,8 @@ def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
 @app.get("/league/rankings", response_model=List[schemas.Member])
 def get_rankings(db: Session = Depends(get_db)):
     # 순위 산정: 승점 > 득실차 > 승수 내림차순
-    rankings = db.query(models.Member).order_by(
+    # 승인된 회원만 랭킹에 표시
+    rankings = db.query(models.Member).filter(models.Member.is_approved == True).order_by(
         models.Member.rank_point.desc(),
         models.Member.game_diff.desc(),
         models.Member.wins.desc()
