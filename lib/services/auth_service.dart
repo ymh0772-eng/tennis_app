@@ -1,50 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../models/user.dart';
+import '../models/member.dart';
 
 class AuthService {
-  // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
-  static String get baseUrl =>
-      'https://mhyunhome.duckdns.org'; // Use actual IP for physical device testing
+  // 서버 주소
+  static const String baseUrl = 'http://mhyunhome.duckdns.org';
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  static String? accessToken; // Optional: Keep for quick access
-  final _storage = const FlutterSecureStorage();
-
-  Future<Map<String, dynamic>> login(String phone, String pin) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone, 'pin': pin}),
-    );
-
-    // 1. 상세 디버깅 로그 추가
-    print('📦 서버 응답 상태 코드: ${response.statusCode}');
-    print('📦 서버 응답 본문: ${utf8.decode(response.bodyBytes)}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-
-      // 2. 토큰 파싱 강화 (Null Safety)
-      final token =
-          data['access_token'] ?? data['accessToken'] ?? data['token'];
-
-      if (token != null) {
-        // 3. 저장소 로직 확인
-        accessToken = token;
-        await _storage.write(key: 'access_token', value: accessToken);
-        print('✅ 토큰 저장 완료: $accessToken');
-      } else {
-        print('⚠️ 경고: 응답에서 토큰을 찾을 수 없습니다.');
-      }
-      return data;
-    } else {
-      throw Exception(
-        jsonDecode(utf8.decode(response.bodyBytes))['detail'] ?? 'Login failed',
+  // 1. 로그인
+  Future<Member?> login(String username, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/token'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {'username': username, 'password': password},
       );
+
+      print('Login Status: ${response.statusCode}'); // [디버깅]
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final String token = data['access_token'];
+
+        await _storage.write(key: 'access_token', value: token);
+        return await _getMe(token);
+      } else {
+        print('Login failed Body: ${utf8.decode(response.bodyBytes)}'); // [디버깅]
+        return null;
+      }
+    } catch (e) {
+      print('Login error: $e');
+      return null;
     }
   }
 
+  // 2. 회원가입
   Future<Map<String, dynamic>> register(
     String name,
     String phone,
@@ -69,92 +60,107 @@ class AuthService {
     }
   }
 
-  Future<List<dynamic>> fetchPendingUsers() async {
-    final response = await http.get(Uri.parse('$baseUrl/users/pending'));
-    if (response.statusCode == 200) {
-      print('DEBUG: 원본 데이터(Pending): ${utf8.decode(response.bodyBytes)}');
-      final List<dynamic> rawList = jsonDecode(utf8.decode(response.bodyBytes));
-      // Sanitize data using User model with fail-safe map
-      return rawList
-          .map((json) {
-            try {
-              return User.fromJson(json).toJson();
-            } catch (e) {
-              print('⚠️ Parse Error (ID: ${json['id']}): $e');
-              return null;
-            }
-          })
-          .where((item) => item != null)
-          .toList();
-    } else {
-      throw Exception('Failed to load pending users');
-    }
-  }
-
-  Future<List<dynamic>> fetchMembers({bool? isApproved}) async {
+  // 3. 회원 목록 불러오기 (토큰 추가 수정됨 ✅)
+  Future<List<Member>> fetchMembers({bool? isApproved}) async {
+    final token = await getToken(); // 토큰 가져오기
     String url = '$baseUrl/members/';
     if (isApproved != null) {
-      url += '?is_approved=$isApproved';
+      url += '?is_approved=$isApproved'; // 쿼리 파라미터 수정 (백엔드에 맞춤)
     }
-    final response = await http.get(Uri.parse(url));
+
+    // 헤더에 토큰 추가
+    final response = await http.get(
+      Uri.parse(url),
+      headers: token != null ? {'Authorization': 'Bearer $token'} : {},
+    );
+
     if (response.statusCode == 200) {
-      print('DEBUG: 원본 데이터(Members): ${utf8.decode(response.bodyBytes)}');
       final List<dynamic> rawList = jsonDecode(utf8.decode(response.bodyBytes));
-      // Sanitize data using User model with fail-safe map
-      return rawList
-          .map((json) {
-            try {
-              return User.fromJson(json).toJson();
-            } catch (e) {
-              print('⚠️ Parse Error (ID: ${json['id']}): $e');
-              return null;
-            }
-          })
-          .where((item) => item != null)
-          .toList();
+      return rawList.map((json) => Member.fromJson(json)).toList();
     } else {
       throw Exception('Failed to load members');
     }
   }
 
-  // Backend Endpoint: PUT /users/{id}/approve (preferred) or /members/{phone}/approve
-  // Returns null if successful, otherwise returns error message
+  // 4. 회원 승인
   Future<String?> approveMember(String phone, {required int id}) async {
-    // Use the ID to build the RESTful URL
-    final url = Uri.parse('$baseUrl/members/$id/approval');
-    print("📡 승인 요청 발송 (ID): $id -> $url");
+    final token = await getToken();
+    if (token == null) return '인증 정보가 없습니다.';
 
+    // URL 수정 (백엔드 라우터 규칙 확인 필요, 보통 approve 동사 사용)
+    final url = Uri.parse('$baseUrl/members/$id/approve');
     try {
-      // 1. Read token from storage
-      final token = await _storage.read(key: 'access_token');
-
-      if (token == null) {
-        print('❌ 토큰 없음: 로그인이 필요합니다.');
-        return '인증 정보가 없습니다. 다시 로그인해주세요.';
-      }
-
-      print(
-        '🔑 사용 토큰: ${token.substring(0, 10)}...',
-      ); // Log partial token for debugging
-
-      final headers = {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      };
-
-      final response = await http.put(url, headers: headers);
+      final response = await http.put(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
 
       if (response.statusCode == 200) {
-        print("✅ 승인 성공: ${response.body}");
-        return null; // Success
+        return null;
       } else {
-        final errorMsg = "오류: ${response.statusCode} - ${response.body}";
-        print("❌ 승인 실패: $errorMsg");
-        return errorMsg;
+        return "오류: ${response.statusCode} - ${utf8.decode(response.bodyBytes)}";
       }
     } catch (e) {
-      print("❌ 통신 에러: $e");
       return "통신 에러: $e";
     }
+  }
+
+  // 5. 내 정보 가져오기 (여기가 핵심! 🕵️)
+  Future<Member?> _getMe(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      // [디버깅] 서버가 보내준 진짜 데이터를 터미널에 찍어봅니다.
+      print('--- [DEBUG] Server Response (/users/me) ---');
+      print(utf8.decode(response.bodyBytes));
+      print('-------------------------------------------');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return Member.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      print('Get Me error: $e');
+      return null;
+    }
+  }
+
+  // 6. 로그아웃
+  Future<void> logout() async {
+    await _storage.delete(key: 'access_token');
+  }
+
+  // 7. 토큰 가져오기
+  Future<String?> getToken() async {
+    return await _storage.read(key: 'access_token');
+  }
+
+  // 8. 회원 삭제
+  Future<void> deleteMember(int memberId) async {
+    final token = await getToken();
+    if (token == null) throw Exception("로그인이 필요합니다.");
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/members/$memberId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('회원 삭제 실패: ${response.statusCode}');
+    }
+  }
+
+  // 9. 현재 멤버 가져오기
+  Future<Member?> getCurrentMember() async {
+    final token = await getToken();
+    if (token == null) return null;
+    return await _getMe(token);
   }
 }

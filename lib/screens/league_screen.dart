@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/league_service.dart';
 import '../services/auth_service.dart';
+import '../models/member.dart';
+import 'match_history_screen.dart';
 
 class LeagueScreen extends StatefulWidget {
   const LeagueScreen({super.key});
@@ -15,6 +17,7 @@ class _LeagueScreenState extends State<LeagueScreen> {
 
   List<dynamic> _rankings = [];
   List<dynamic> _members = [];
+  Member? _currentUser;
   bool _isLoading = true;
 
   // Match Input State: 2vs2
@@ -36,11 +39,16 @@ class _LeagueScreenState extends State<LeagueScreen> {
     try {
       final rankings = await _leagueService.fetchRankings();
       final members = await _authService.fetchMembers(isApproved: true);
-      setState(() {
-        _rankings = rankings;
-        _members = members;
-        _isLoading = false;
-      });
+      final currentUser = await _authService.getCurrentMember();
+
+      if (mounted) {
+        setState(() {
+          _rankings = rankings;
+          _members = members;
+          _currentUser = currentUser;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -144,6 +152,21 @@ class _LeagueScreenState extends State<LeagueScreen> {
         title: const Text('월례 풀리그 (복식)'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        actions: [
+          if (_currentUser != null) // Only show if user is loaded
+            IconButton(
+              icon: const Icon(Icons.history),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        MatchHistoryScreen(currentUser: _currentUser!),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

@@ -49,16 +49,16 @@ class _LoginScreenState extends State<LoginScreen> {
           _pinController.text,
         );
         if (mounted) {
-          if (member['is_approved'] == true) {
+          if (member?.isApproved == true) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('환영합니다, ${member['name']}님!')),
+              SnackBar(content: Text('환영합니다, ${member?.name ?? "회원"}님!')),
             );
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => HomeScreen(
-                  memberName: member['name'],
-                  memberRole: member['role'],
+                  memberName: member?.name ?? "이름 없음",
+                  memberRole: member?.role ?? "MEMBER",
                 ),
               ),
             );
