@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../models/member.dart';
 
 class MemberDirectoryScreen extends StatefulWidget {
   final String memberRole;
@@ -12,7 +13,7 @@ class MemberDirectoryScreen extends StatefulWidget {
 
 class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
   final _authService = AuthService();
-  List<dynamic> _members = [];
+  List<Member> _members = [];
   bool _isLoading = true;
 
   @override
@@ -50,14 +51,21 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
           setState(() {
             // 리스트에서 해당 회원을 찾아 상태를 'is_approved': true 로 변경
             final index = _members.indexWhere((m) {
-              return m['id'] == id;
+              return m.id == id;
             });
 
             if (index != -1) {
-              // Map을 복사하여 수정 (권장)
-              final updatedMember = Map<String, dynamic>.from(_members[index]);
-              updatedMember['is_approved'] = true;
-              _members[index] = updatedMember;
+              // Create new Member with updated status
+              final oldMember = _members[index];
+              _members[index] = Member(
+                id: oldMember.id,
+                name: oldMember.name,
+                phone: oldMember.phone,
+                birth: oldMember.birth,
+                pin: oldMember.pin,
+                isApproved: true,
+                role: oldMember.role,
+              );
             }
           });
           ScaffoldMessenger.of(
@@ -90,8 +98,8 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
     // Sort logic (unchanged or slightly adjusted if needed, currently only for ADMIN mostly)
     if (widget.memberRole.toUpperCase() == 'ADMIN') {
       displayedMembers.sort((a, b) {
-        final aApproved = a['is_approved'] == true;
-        final bApproved = b['is_approved'] == true;
+        final aApproved = a.isApproved;
+        final bApproved = b.isApproved;
         if (aApproved == bApproved) return 0;
         return aApproved ? 1 : -1; // Pending (false) comes first
       });
@@ -109,7 +117,7 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
               itemCount: displayedMembers.length,
               itemBuilder: (context, index) {
                 final member = displayedMembers[index];
-                final isApproved = member['is_approved'] == true;
+                final isApproved = member.isApproved;
 
                 // Only Admin sees unapproved members, so this check is mainly for Admin view
                 // For regular users, isApproved is always true due to filter above.
@@ -122,14 +130,14 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
                   child: ListTile(
                     title: RichText(
                       text: TextSpan(
-                        text: member['name'],
+                        text: member.name,
                         style: DefaultTextStyle.of(context).style.copyWith(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
                         children: [
                           TextSpan(
-                            text: ' (${member['birth']}년생)',
+                            text: ' (${member.birth}년생)',
                             style: const TextStyle(
                               color: Colors.grey,
                               fontSize: 14,
@@ -148,9 +156,7 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
                         ],
                       ),
                     ),
-                    subtitle: Text(
-                      '${member['phone']} | 랭킹: ${member['rank_point'] ?? 0}점',
-                    ),
+                    subtitle: Text('${member.phone}'),
                     trailing: widget.memberRole.toUpperCase() == 'ADMIN'
                         ? (isApproved
                               ? const Text(
@@ -161,10 +167,8 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
                                   ),
                                 )
                               : ElevatedButton(
-                                  onPressed: () => _approve(
-                                    member['phone'],
-                                    id: member['id'],
-                                  ),
+                                  onPressed: () =>
+                                      _approve(member.phone, id: member.id),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,
                                     foregroundColor: Colors.white,

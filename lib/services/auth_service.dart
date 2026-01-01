@@ -11,10 +11,17 @@ class AuthService {
   // 1. 로그인
   Future<Member?> login(String username, String password) async {
     try {
+      // 1. Sanitize input (Remove hyphens)
+      final cleanPhone = username.replaceAll('-', '').trim();
+
+      // 👇 [DEBUG] This log will tell us the truth
+      print('🔥🔥🔥 [DEBUG] Sending Login Request -> Phone: "$cleanPhone"');
+
+      // 2. Call the correct endpoint with JSON body
       final response = await http.post(
-        Uri.parse('$baseUrl/token'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {'username': username, 'password': password},
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': cleanPhone, 'pin': password}),
       );
 
       print('Login Status: ${response.statusCode}'); // [디버깅]

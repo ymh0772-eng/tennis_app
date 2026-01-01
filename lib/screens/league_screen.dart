@@ -16,7 +16,7 @@ class _LeagueScreenState extends State<LeagueScreen> {
   final _authService = AuthService();
 
   List<dynamic> _rankings = [];
-  List<dynamic> _members = [];
+  List<Member> _members = [];
   Member? _currentUser;
   bool _isLoading = true;
 
@@ -137,8 +137,8 @@ class _LeagueScreenState extends State<LeagueScreen> {
       ),
       items: _members.map<DropdownMenuItem<int>>((m) {
         return DropdownMenuItem<int>(
-          value: m['id'],
-          child: Text(m['name'], overflow: TextOverflow.ellipsis),
+          value: m.id,
+          child: Text(m.name, overflow: TextOverflow.ellipsis),
         );
       }).toList(),
       onChanged: onChanged,
