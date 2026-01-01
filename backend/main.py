@@ -147,6 +147,10 @@ def login(login_req: schemas.LoginRequest, db: Session = Depends(get_db)):
         # 앱이 죽지 않도록 500 에러 대신 명확한 메시지 전달
         raise HTTPException(status_code=500, detail=f"로그인 처리 중 오류: {str(e)}")
 
+@app.get("/users/me", response_model=schemas.Member)
+def read_users_me(current_user: models.Member = Depends(get_current_user)):
+    return current_user
+
 @app.get("/members/", response_model=List[schemas.Member])
 def read_members(skip: int = 0, limit: int = 100, is_approved: Optional[bool] = None, db: Session = Depends(get_db)):
     query = db.query(models.Member)
