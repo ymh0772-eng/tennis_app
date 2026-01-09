@@ -3,6 +3,7 @@ import '../services/league_service.dart';
 import '../services/auth_service.dart';
 import '../models/member.dart';
 import 'match_history_screen.dart';
+import 'league_history_screen.dart';
 
 class LeagueScreen extends StatefulWidget {
   const LeagueScreen({super.key});
@@ -166,6 +167,17 @@ class _LeagueScreenState extends State<LeagueScreen> {
                 );
               },
             ),
+          // [UI 추가] 월별 명예의 전당 (기록실) 이동 버튼
+          IconButton(
+            icon: const Icon(Icons.emoji_events), // 트로피 아이콘
+            tooltip: '월별 명예의 전당',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LeagueHistoryScreen()),
+              );
+            },
+          ),
         ],
       ),
       body: _isLoading

@@ -88,6 +88,48 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
     }
   }
 
+  // [UI 함수 추가] 삭제 확인 다이얼로그
+  void _showDeleteDialog(int memberId, String memberName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('회원 탈퇴 처리'),
+        content: Text("정말로 '$memberName' 회원을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(), // 취소
+            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop(); // 다이얼로그 닫기
+
+              // 삭제 API 호출 (AuthService 사용)
+              bool success = await _authService.deleteMember(memberId);
+
+              if (success) {
+                // 성공 시 리스트 갱신 (화면 새로고침)
+                _loadMembers();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$memberName 회원이 삭제되었습니다.')),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('삭제에 실패했습니다.')));
+                }
+              }
+            },
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Filter members based on role
@@ -158,23 +200,37 @@ class _MemberDirectoryScreenState extends State<MemberDirectoryScreen> {
                     ),
                     subtitle: Text('${member.phone}'),
                     trailing: widget.memberRole.toUpperCase() == 'ADMIN'
-                        ? (isApproved
-                              ? const Text(
-                                  '정회원',
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                              : ElevatedButton(
-                                  onPressed: () =>
-                                      _approve(member.phone, id: member.id),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('승인하기'),
-                                ))
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              isApproved
+                                  ? const Text(
+                                      '정회원',
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: () =>
+                                          _approve(member.phone, id: member.id),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text('승인하기'),
+                                    ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.redAccent,
+                                ),
+                                onPressed: () =>
+                                    _showDeleteDialog(member.id, member.name),
+                              ),
+                            ],
+                          )
                         : null, // Regular users don't see any trailing button/status
                   ),
                 );

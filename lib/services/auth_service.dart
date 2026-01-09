@@ -150,17 +150,26 @@ class AuthService {
   }
 
   // 8. 회원 삭제
-  Future<void> deleteMember(int memberId) async {
+  // 8. 회원 삭제 (Updated to return bool)
+  Future<bool> deleteMember(int memberId) async {
     final token = await getToken();
-    if (token == null) throw Exception("로그인이 필요합니다.");
+    if (token == null) return false;
 
-    final response = await http.delete(
-      Uri.parse('$baseUrl/members/$memberId'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/members/$memberId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-    if (response.statusCode != 200) {
-      throw Exception('회원 삭제 실패: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("삭제 실패: ${response.statusCode} ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("삭제 중 에러 발생: $e");
+      return false;
     }
   }
 
