@@ -14,7 +14,18 @@ from database import SessionLocal, engine
 # DB 테이블 생성
 models.Base.metadata.create_all(bind=engine)
 
+# import 추가
+from apscheduler.schedulers.background import BackgroundScheduler
+from scheduler import reset_league_and_cleanup
+
 app = FastAPI()
+
+# 스케줄러 설정
+scheduler = BackgroundScheduler()
+# 매월 말일 23시 59분에 실행 (테스트를 위해 매일 실행하려면 day='last' 대신 hour, minute 조정 가능)
+# 여기서는 '매월 말일'을 트리거하기 위해 Cron 방식 사용
+scheduler.add_job(reset_league_and_cleanup, 'cron', day='last', hour=23, minute=59)
+scheduler.start()
 
 # CORS 설정 (앱 접속 허용)
 from fastapi.middleware.cors import CORSMiddleware
@@ -152,10 +163,18 @@ def read_users_me(current_user: models.Member = Depends(get_current_user)):
     return current_user
 
 @app.get("/members/", response_model=List[schemas.Member])
-def read_members(skip: int = 0, limit: int = 100, is_approved: Optional[bool] = None, db: Session = Depends(get_db)):
-    query = db.query(models.Member)
+def read_members(
+    skip: int = 0, 
+    limit: int = 100, 
+    is_approved: Optional[bool] = None, 
+    db: Session = Depends(get_db)
+):
+    # is_active가 True인(활동 중인) 회원만 필터링
+    query = db.query(models.Member).filter(models.Member.is_active == True)
+    
     if is_approved is not None:
         query = query.filter(models.Member.is_approved == is_approved)
+        
     members = query.offset(skip).limit(limit).all()
     return members
 
@@ -188,7 +207,6 @@ def delete_member(
     db: Session = Depends(get_db), 
     current_user: models.Member = Depends(get_current_user)
 ):
-    # 권한 체크: ADMIN만 삭제 가능
     if current_user.role != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
@@ -197,12 +215,14 @@ def delete_member(
     
     member = db.query(models.Member).filter(models.Member.id == member_id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="해당 회원을 찾을 수 없습니다.")
         
-    db.delete(member)
+    # [핵심] DB에서 지우지 않고 플래그만 변경 (경기 기록 보존)
+    member.is_active = False
     db.commit()
-    print(f"✅ [Server Log] 회원 삭제됨: {member.name} (ID: {member.id})")
-    return {"message": "Member deleted successfully"}
+    
+    print(f"🗑️ [Soft Delete] 회원 숨김 처리: {member.name}")
+    return {"message": "회원이 탈퇴(숨김) 처리되었습니다.", "deleted_id": member_id}
 
 # --- 3. 리그 및 경기 API ---
 

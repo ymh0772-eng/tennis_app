@@ -10,16 +10,21 @@ class Member(Base):
     name = Column(String(50), index=True)
     phone = Column(String(20), unique=True, index=True)
     birth = Column(String(10)) # YYYY format
-    rank_point = Column(Integer, default=1000)
-    role = Column(String(20), default="USER") # USER, ADMIN
-    is_approved = Column(Boolean, default=False)
     pin = Column(String(20)) # 4-digit PIN
+    # 등급 및 승인 여부
+    role = Column(String, default="MEMBER")
+    is_approved = Column(Boolean, default=False)
     
-    # League Stats
+    # 리그 스탯
+    rank_point = Column(Integer, default=0) # 승점
+    game_diff = Column(Integer, default=0)  # 득실차
     wins = Column(Integer, default=0)
-    losses = Column(Integer, default=0)
     draws = Column(Integer, default=0)
-    game_diff = Column(Integer, default=0)
+    losses = Column(Integer, default=0)
+
+    # [신규 추가] 소프트 삭제(임시 삭제) 플래그
+    # True: 활동 중, False: 삭제 대기(휴지통)
+    is_active = Column(Boolean, default=True)
 
 class Match(Base):
     __tablename__ = "matches"
@@ -55,17 +60,27 @@ class ExerciseSchedule(Base):
     # [수정 3] 여기에 있던 중복된 start_time, end_time 라인을 삭제했습니다.
     date = Column(String(20))       # YYYY-MM-DD
 
+# [신규 추가] 지난달 기록 보관용 테이블
 class LeagueHistory(Base):
-    __tablename__ = "league_history"
-
+    __tablename__ = "league_histories"
+    
     id = Column(Integer, primary_key=True, index=True)
     member_id = Column(Integer, ForeignKey("members.id"))
+    
+    # 기록 시점 (예: 2026년 1월)
     year = Column(Integer)
     month = Column(Integer)
+    
+    # 당시 최종 성적
     total_points = Column(Integer)
-    rank = Column(Integer)
-
-    member = relationship("Member", foreign_keys=[member_id])
+    final_wins = Column(Integer)
+    final_losses = Column(Integer)
+    final_diff = Column(Integer) # 당시 득실차
+    
+    recorded_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # 멤버와 연결
+    member = relationship("Member")
 
 class CommunityPost(Base):
     __tablename__ = "community_posts"
