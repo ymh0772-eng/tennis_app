@@ -39,4 +39,22 @@ class LeagueService {
       throw Exception('Failed to submit match');
     }
   }
+
+  // 지난 기록 조회 (연도, 월)
+  Future<List<dynamic>> fetchLeagueHistory(int year, int month) async {
+    final url = Uri.parse('$baseUrl/league/history?year=$year&month=$month');
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        print('기록 조회 실패: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('에러 발생: $e');
+      return [];
+    }
+  }
 }
