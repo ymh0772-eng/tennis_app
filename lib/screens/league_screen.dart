@@ -182,200 +182,202 @@ class _LeagueScreenState extends State<LeagueScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Top: Ranking Board
-                Expanded(
-                  flex: 4,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('순위')),
-                          DataColumn(label: Text('이름')),
-                          DataColumn(label: Text('승점')),
-                          DataColumn(label: Text('전적')),
-                          DataColumn(label: Text('득실')),
-                        ],
-                        rows: List<DataRow>.generate(_rankings.length, (index) {
-                          final member = _rankings[index];
-                          return DataRow(
-                            cells: [
-                              DataCell(Text('${index + 1}')),
-                              DataCell(Text(member['name'])),
-                              DataCell(Text('${member['rank_point']}')),
-                              DataCell(
-                                Text(
-                                  '${member['wins']}승 ${member['losses']}패 ${member['draws']}무',
+          : SingleChildScrollView(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                children: [
+                  // Top: Ranking Board
+                  // Remove Expanded, let it take natural height
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: const [
+                        DataColumn(label: Text('순위')),
+                        DataColumn(label: Text('이름')),
+                        DataColumn(label: Text('승점')),
+                        DataColumn(label: Text('전적')),
+                        DataColumn(label: Text('득실')),
+                      ],
+                      rows: List<DataRow>.generate(_rankings.length, (index) {
+                        final member = _rankings[index];
+                        return DataRow(
+                          cells: [
+                            DataCell(Text('${index + 1}')),
+                            DataCell(Text(member['name'])),
+                            DataCell(Text('${member['rank_point']}')),
+                            DataCell(
+                              Text(
+                                '${member['wins']}승 ${member['losses']}패 ${member['draws']}무',
+                              ),
+                            ),
+                            DataCell(Text('${member['game_diff']}')),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
+                  const Divider(thickness: 2),
+                  // Bottom: Match Input
+                  // Remove Expanded
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '경기 결과 입력 (2 vs 2)',
+                          style: Theme.of(context).textTheme.titleLarge,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Team A Card
+                        Card(
+                          elevation: 2,
+                          color: Colors.blue.shade50,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  "Team A",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.blue,
+                                  ),
                                 ),
-                              ),
-                              DataCell(Text('${member['game_diff']}')),
-                            ],
-                          );
-                        }),
-                      ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildPlayerDropdown(
+                                        "선수 1",
+                                        _teamAP1,
+                                        (val) => setState(() => _teamAP1 = val),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildPlayerDropdown(
+                                        "선수 2",
+                                        _teamAP2,
+                                        (val) => setState(() => _teamAP2 = val),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                TextField(
+                                  controller: _scoreAController,
+                                  decoration: const InputDecoration(
+                                    labelText: "Team A 점수",
+                                    border: OutlineInputBorder(),
+                                    fillColor: Colors.white,
+                                    filled: true,
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 8,
+                        ), // Changed from 16 to 8 to match original spacing
+                        // VS Divider
+                        const Center(
+                          // Added VS Divider back
+                          child: Text(
+                            "VS",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8), // Added VS Divider back
+                        // Team B Card
+                        Card(
+                          elevation: 2,
+                          color: Colors.red.shade50,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  "Team B",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildPlayerDropdown(
+                                        "선수 1",
+                                        _teamBP1,
+                                        (val) => setState(() => _teamBP1 = val),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildPlayerDropdown(
+                                        "선수 2",
+                                        _teamBP2,
+                                        (val) => setState(() => _teamBP2 = val),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                TextField(
+                                  controller: _scoreBController,
+                                  decoration: const InputDecoration(
+                                    labelText: "Team B 점수",
+                                    border: OutlineInputBorder(),
+                                    fillColor: Colors.white,
+                                    filled: true,
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Submit Button
+                        ElevatedButton.icon(
+                          onPressed: _submitMatch,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.save),
+                          label: const Text(
+                            '경기 결과 등록',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 40), // Bottom padding
+                      ],
                     ),
                   ),
-                ),
-                const Divider(thickness: 2),
-                // Bottom: Match Input
-                Expanded(
-                  flex: 6,
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            '경기 결과 입력 (2 vs 2)',
-                            style: Theme.of(context).textTheme.titleLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Team A Card
-                          Card(
-                            elevation: 2,
-                            color: Colors.blue.shade50,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "Team A",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.blue,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildPlayerDropdown(
-                                          "선수 1",
-                                          _teamAP1,
-                                          (val) =>
-                                              setState(() => _teamAP1 = val),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: _buildPlayerDropdown(
-                                          "선수 2",
-                                          _teamAP2,
-                                          (val) =>
-                                              setState(() => _teamAP2 = val),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _scoreAController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Team A 점수',
-                                      border: OutlineInputBorder(),
-                                      fillColor: Colors.white,
-                                      filled: true,
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // VS Divider
-                          const Center(
-                            child: Text(
-                              "VS",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // Team B Card
-                          Card(
-                            elevation: 2,
-                            color: Colors.red.shade50,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "Team B",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildPlayerDropdown(
-                                          "선수 1",
-                                          _teamBP1,
-                                          (val) =>
-                                              setState(() => _teamBP1 = val),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: _buildPlayerDropdown(
-                                          "선수 2",
-                                          _teamBP2,
-                                          (val) =>
-                                              setState(() => _teamBP2 = val),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _scoreBController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Team B 점수',
-                                      border: OutlineInputBorder(),
-                                      fillColor: Colors.white,
-                                      filled: true,
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-                          FilledButton(
-                            onPressed: _submitMatch,
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            child: const Text(
-                              '결과 등록',
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
     );
   }
