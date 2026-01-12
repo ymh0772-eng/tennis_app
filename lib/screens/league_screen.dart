@@ -156,7 +156,10 @@ class _LeagueScreenState extends State<LeagueScreen> {
         actions: [
           if (_currentUser != null) // Only show if user is loaded
             IconButton(
-              icon: const Icon(Icons.history),
+              icon: const Icon(
+                Icons.history,
+                color: Colors.white,
+              ), // History Icon
               onPressed: () {
                 Navigator.push(
                   context,
