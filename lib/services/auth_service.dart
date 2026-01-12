@@ -5,7 +5,8 @@ import '../models/member.dart';
 
 class AuthService {
   // 서버 주소
-  static const String baseUrl = 'http://mhyunhome.duckdns.org';
+  // 서버 주소 (HTTPS로 변경)
+  static const String baseUrl = 'https://mhyunhome.duckdns.org';
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   // 1. 로그인
