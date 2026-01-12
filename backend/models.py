@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Date
 from sqlalchemy.orm import relationship
 from database import Base  # [수정 1] 점(.) 제거: 절대 경로 사용
 import datetime
@@ -50,15 +50,17 @@ class Match(Base):
     team_b_player1 = relationship("Member", foreign_keys=[team_b_player1_id])
     team_b_player2 = relationship("Member", foreign_keys=[team_b_player2_id])
 
-class ExerciseSchedule(Base):
+class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(Integer, primary_key=True, index=True)
+    member_id = Column(Integer, ForeignKey("members.id"))
     member_name = Column(String(50))
     start_time = Column(String(10)) # HH:mm
     end_time = Column(String(10))   # HH:mm
-    # [수정 3] 여기에 있던 중복된 start_time, end_time 라인을 삭제했습니다.
-    date = Column(String(20))       # YYYY-MM-DD
+    date = Column(Date)             # YYYY-MM-DD
+    
+    member = relationship("Member")
 
 # [신규 추가] 지난달 기록 보관용 테이블
 class LeagueHistory(Base):

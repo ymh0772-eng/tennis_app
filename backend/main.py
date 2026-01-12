@@ -178,28 +178,27 @@ def read_members(
     members = query.offset(skip).limit(limit).all()
     return members
 
-@app.put("/members/{phone}/approve", response_model=schemas.Member)
-def approve_member(phone: str, db: Session = Depends(get_db)):
-    clean_phone = sanitize_phone(phone)
-    member = db.query(models.Member).filter(models.Member.phone == clean_phone).first()
-    if not member:
-        raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
-    member.is_approved = True
-    db.commit()
-    print(f"✅ [Server Log] 승인 처리됨: {member.name}, 승인여부: {member.is_approved}")
-    db.refresh(member)
-    return member
+@app.put("/members/{member_id}/approve")
+def approve_member(
+    member_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.Member = Depends(get_current_user)
+):
+    # 1. 관리자 권한 체크
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="승인 권한이 없습니다.")
 
-@app.put("/members/{member_id}/approval")
-def approve_member_by_id(member_id: int, db: Session = Depends(get_db)):
+    # 2. 회원 조회 (ID로 찾기)
     member = db.query(models.Member).filter(models.Member.id == member_id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
-    
+        raise HTTPException(status_code=404, detail="해당 회원을 찾을 수 없습니다.")
+
+    # 3. 승인 처리
     member.is_approved = True
     db.commit()
-    print(f"✅ [Server Log] ID 승인 처리됨: {member.name} (ID: {member.id})")
-    return {"message": "Member approved successfully"}
+    
+    print(f"✅ [Server Log] 회원 승인 완료: {member.name} (ID: {member_id})")
+    return {"message": f"{member.name}님의 가입이 승인되었습니다."}
 
 @app.delete("/members/{member_id}")
 def delete_member(
@@ -416,16 +415,22 @@ def get_rankings(db: Session = Depends(get_db)):
 
 # --- 4. 운동 약속 (Schedule) API ---
 
-@app.post("/schedules", response_model=schemas.ScheduleResponse)
-def create_schedule(schedule: schemas.ScheduleCreate, db: Session = Depends(get_db)):
+@app.post("/schedules", response_model=schemas.Schedule)
+def create_schedule(
+    schedule: schemas.ScheduleCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.Member = Depends(get_current_user)
+):
     try:
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        # DB에 저장할 때는 date 객체 사용 (입력받은 날짜 사용)
+        # start_time, end_time은 time 객체이므로 문자열로 변환하여 저장
         
-        db_schedule = models.ExerciseSchedule(
-            member_name=schedule.member_name,
-            start_time=schedule.start_time,
-            end_time=schedule.end_time,
-            date=today
+        db_schedule = models.Schedule(
+            member_id=current_user.id,
+            member_name=current_user.name, 
+            start_time=schedule.start_time.strftime("%H:%M"),
+            end_time=schedule.end_time.strftime("%H:%M"),
+            date=schedule.date
         )
         db.add(db_schedule)
         db.commit()
@@ -435,12 +440,58 @@ def create_schedule(schedule: schemas.ScheduleCreate, db: Session = Depends(get_
         print(f"SCHEDULE ERROR: {e}")
         raise HTTPException(status_code=500, detail=f"스케줄 등록 실패: {str(e)}")
 
-@app.get("/schedules", response_model=List[schemas.ScheduleResponse])
-def read_schedules(db: Session = Depends(get_db)):
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    # 오늘 날짜의 스케줄만 조회
-    schedules = db.query(models.ExerciseSchedule).filter(models.ExerciseSchedule.date == today).all()
+@app.get("/schedules", response_model=List[schemas.Schedule])
+def read_schedules(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    today = datetime.date.today()
+    
+    # 날짜가 '오늘'인 데이터만 조회
+    schedules = db.query(models.Schedule)\
+        .filter(models.Schedule.date == today)\
+        .offset(skip).limit(limit).all()
+        
     return schedules
+
+@app.put("/schedules/{schedule_id}")
+def update_schedule(
+    schedule_id: int,
+    schedule_update: schemas.ScheduleCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.Member = Depends(get_current_user)
+):
+    schedule = db.query(models.Schedule).filter(models.Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="약속을 찾을 수 없습니다.")
+
+    # 권한 체크: 본인 또는 관리자만 수정 가능
+    if schedule.member_id != current_user.id and current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
+
+    schedule.start_time = schedule_update.start_time.strftime("%H:%M")
+    schedule.end_time = schedule_update.end_time.strftime("%H:%M")
+    schedule.date = schedule_update.date
+    db.commit()
+    return {"message": "수정되었습니다."}
+
+@app.delete("/schedules/{schedule_id}")
+def delete_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Member = Depends(get_current_user)
+):
+    schedule = db.query(models.Schedule).filter(models.Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="약속을 찾을 수 없습니다.")
+
+    if schedule.member_id != current_user.id and current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="삭제 권한이 없습니다.")
+
+    db.delete(schedule)
+    db.commit()
+    return {"message": "삭제되었습니다."}
 
 # --- 5. 토너먼트 (Tournament) API ---
 

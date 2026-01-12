@@ -65,17 +65,33 @@ class MatchHistoryResponse(BaseModel):
     class Config:
         orm_mode = True
 
+from datetime import date as date_type
+
+from datetime import time, date
+
 class ScheduleBase(BaseModel):
     member_name: str
     start_time: str
     end_time: str
 
-class ScheduleCreate(ScheduleBase):
-    pass
+class ScheduleCreate(BaseModel):
+    start_time: time
+    end_time: time
+    date: date
 
-class ScheduleResponse(ScheduleBase):
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "start_time": "10:00:00",
+                "end_time": "12:00:00",
+                "date": "2024-05-20"
+            }
+        }
+
+class Schedule(ScheduleBase):
     id: int
-    date: str
+    member_id: int
+    date: date_type
 
     class Config:
         orm_mode = True
