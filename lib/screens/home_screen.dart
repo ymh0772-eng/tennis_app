@@ -58,7 +58,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('무안 테니스 클럽'),
+        title: const Text('오룡체육공원 테니스코트'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [

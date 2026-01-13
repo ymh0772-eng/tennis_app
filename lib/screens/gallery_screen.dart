@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -67,7 +68,17 @@ class _GalleryScreenState extends State<GalleryScreen> {
       request.fields['uploader_name'] = widget.memberName;
       request.fields['file_type'] = type;
 
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      if (kIsWeb) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            await file.readAsBytes(),
+            filename: file.name,
+          ),
+        );
+      } else {
+        request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      }
 
       var response = await request.send();
 
@@ -158,16 +169,24 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 final filePath = media['file_path'] as String;
                 final urlPath = filePath.replaceFirst('uploads/', 'images/');
                 final url = '${AuthService.baseUrl}/$urlPath';
+                final mediaId = media['id'];
 
                 return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            MediaDetailScreen(url: url, isVideo: isVideo),
+                        builder: (context) => MediaDetailScreen(
+                          url: url,
+                          isVideo: isVideo,
+                          mediaId: mediaId,
+                        ),
                       ),
                     );
+
+                    if (result == true) {
+                      _fetchMedia();
+                    }
                   },
                   child: Stack(
                     fit: StackFit.expand,
@@ -206,11 +225,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
 class MediaDetailScreen extends StatefulWidget {
   final String url;
   final bool isVideo;
+  final int mediaId;
 
   const MediaDetailScreen({
     super.key,
     required this.url,
     required this.isVideo,
+    required this.mediaId,
   });
 
   @override
@@ -242,6 +263,50 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
     setState(() {});
   }
 
+  Future<void> _deleteMedia() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('삭제 확인'),
+          content: const Text('정말 삭제하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('삭제', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        final response = await http.delete(
+          Uri.parse('${AuthService.baseUrl}/gallery/${widget.mediaId}'),
+        );
+
+        if (response.statusCode == 200) {
+          if (mounted) {
+            Navigator.pop(context, true); // Return true to refresh list
+          }
+        } else {
+          throw Exception('Failed to delete media');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _videoPlayerController?.dispose();
@@ -255,6 +320,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(icon: const Icon(Icons.delete), onPressed: _deleteMedia),
+        ],
       ),
       backgroundColor: Colors.black,
       body: Center(
