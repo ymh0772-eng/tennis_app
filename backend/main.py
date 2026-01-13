@@ -628,16 +628,28 @@ def upload_gallery(
 def read_gallery(db: Session = Depends(get_db)):
     return db.query(models.Gallery).order_by(models.Gallery.created_at.desc()).all()
 
-@app.delete("/gallery/{gallery_id}")
-def delete_gallery(gallery_id: int, db: Session = Depends(get_db)):
-    gallery = db.query(models.Gallery).filter(models.Gallery.id == gallery_id).first()
-    if not gallery:
-        raise HTTPException(status_code=404, detail="Gallery item not found")
+@app.delete("/gallery/{media_id}")
+def delete_media(media_id: int, db: Session = Depends(get_db)):
+    # 1. DB 조회
+    media = db.query(models.Gallery).filter(models.Gallery.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
     
-    # Optional: Delete file from disk
-    # if os.path.exists(gallery.file_path):
-    #     os.remove(gallery.file_path)
+    # 2. 파일 삭제
+    try:
+        if media.file_path and os.path.exists(media.file_path):
+            os.remove(media.file_path)
+            print(f"Deleted file: {media.file_path}")
+        
+        # 썸네일이 있다면 썸네일 삭제 로직도 추가 (현재 모델에는 thumbnail_path가 있음)
+        if media.thumbnail_path and os.path.exists(media.thumbnail_path):
+            os.remove(media.thumbnail_path)
+            print(f"Deleted thumbnail: {media.thumbnail_path}")
+            
+    except Exception as e:
+        print(f"Error deleting file: {e}")
 
-    db.delete(gallery)
+    # 3. DB 삭제
+    db.delete(media)
     db.commit()
-    return {"detail": "Gallery item deleted"}
+    return {"detail": "Media deleted successfully"}
