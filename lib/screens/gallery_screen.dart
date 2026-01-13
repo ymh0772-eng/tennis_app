@@ -67,7 +67,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
       request.fields['uploader_name'] = widget.memberName;
       request.fields['file_type'] = type;
 
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
+      );
 
       var response = await request.send();
 
