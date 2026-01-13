@@ -6,3 +6,4 @@ INFO:     Started server process [209510]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     164.68.124.154:0 - "GET /p/poly/000000000000.cfg HTTP/1.0" 404 Not Found
